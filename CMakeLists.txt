@@ -30,5 +30,6 @@ target_link_libraries(${PROJECT_NAME} ${OGRE_LIBRARIES} ${SDL2_LIBRARIES})
 pybind11_add_module(PyVenom pythonbinding.cpp)
 target_link_libraries(PyVenom PRIVATE ${PROJECT_NAME})
 
+# Copying python launch file to build folder
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/main.py
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

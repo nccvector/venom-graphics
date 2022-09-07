@@ -92,7 +92,7 @@ void MyTestApp::setup()
     else
         vp = getRenderWindow()->addViewport(cam);
 
-    vp->setBackgroundColour(Ogre::ColourValue(1, 1, 1));
+    vp->setBackgroundColour(Ogre::ColourValue(0.05, 0.05, 0.05));
 
     // finally something to render
     Ogre::Entity *ent = scnMgr->createEntity("Sinbad.mesh");
