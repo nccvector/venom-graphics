@@ -10,13 +10,16 @@
 class MyTestApp : public OgreBites::ApplicationContextBase, public OgreBites::InputListener
 {
   public:
-    MyTestApp();
+    MyTestApp(int externalWindowHandle);
+    OgreBites::NativeWindowPair createWindow(const Ogre::String &name, Ogre::uint32 w, Ogre::uint32 h,
+                                             Ogre::NameValuePairList miscParams) override;
     void setup() override;
-    bool keyPressed(const OgreBites::KeyboardEvent &evt) override;
     bool frameRenderingQueued(const Ogre::FrameEvent &evt) override;
-    const void *getNextFrame();
+    void resize(unsigned int, unsigned int);
 
   private:
     Ogre::TexturePtr renderTexturePtr;
     Ogre::RenderTexture *renderTexture;
+    int pythonWindowHandle;
+    Ogre::SceneNode *node;
 };

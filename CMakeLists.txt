@@ -8,6 +8,10 @@ find_package(OGRE REQUIRED)
 # Add pybind 11
 add_subdirectory(pybind11)
 
+# Adding sdl2
+find_package(SDL2 REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS})
+
 # # add the source files as usual
 # # add_executable(${PROJECT_NAME} OgreApp.cpp)
 # add_executable(${PROJECT_NAME} OgreApp.cpp)
@@ -20,11 +24,11 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 
 # this also sets the includes and pulls third party dependencies
-target_link_libraries(${PROJECT_NAME} ${OGRE_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OGRE_LIBRARIES} ${SDL2_LIBRARIES})
 
 # Building python bindings
-pybind11_add_module(pymugen pythonbinding.cpp)
-target_link_libraries(pymugen PRIVATE ${PROJECT_NAME})
+pybind11_add_module(PyVenom pythonbinding.cpp)
+target_link_libraries(PyVenom PRIVATE ${PROJECT_NAME})
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/main.py
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -1,38 +1,60 @@
 #include "OgreApp.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
-
 //! [constructor]
-MyTestApp::MyTestApp() : OgreBites::ApplicationContextBase("OgreTutorialApp")
+MyTestApp::MyTestApp(int externalWindowHandle) : OgreBites::ApplicationContextBase("OgreTutorialApp")
 {
+    pythonWindowHandle = externalWindowHandle;
 }
-//! [constructor]
 
-//! [key_handler]
-bool MyTestApp::keyPressed(const OgreBites::KeyboardEvent &evt)
+//! [constructor]
+OgreBites::NativeWindowPair MyTestApp::createWindow(const Ogre::String &name, Ogre::uint32 w, Ogre::uint32 h,
+                                                    Ogre::NameValuePairList miscParams)
 {
-    if (evt.keysym.sym == OgreBites::SDLK_ESCAPE)
+    OgreBites::NativeWindowPair ret = {NULL, NULL};
+
+    // additional windows should reuse the context
+    miscParams["currentGLContext"] = "false";
+    miscParams["externalWindowHandle"] = Ogre::StringConverter::toString((size_t)(pythonWindowHandle));
+    miscParams["parentWindowHandle"] = Ogre::StringConverter::toString((size_t)(pythonWindowHandle));
+
+    auto p = mRoot->getRenderSystem()->getRenderWindowDescription();
+    miscParams.insert(p.miscParams.begin(), p.miscParams.end());
+    p.miscParams = miscParams;
+    p.name = name;
+
+    if (w > 0 && h > 0)
     {
-        getRoot()->queueEndRendering();
+        p.width = w;
+        p.height = h;
     }
-    return true;
+
+    ret.render = mRoot->createRenderWindow(p);
+    ret.render->setVisible(true);
+    ret.render->setVSyncEnabled(false);
+
+    mWindows.push_back(ret);
+
+    return ret;
 }
-//! [key_handler]
 
 //! [setup]
-void MyTestApp::setup(void)
+void MyTestApp::setup()
 {
+    bool hideWindow = false;
+
     // do not forget to call the base first
     OgreBites::ApplicationContextBase::setup();
-    mWindows[0].render->setHidden(true); // IMPORTANT! setting window to hidden
+    if (hideWindow)
+    {
+        mWindows[0].render->setHidden(true); // IMPORTANT! setting window to hidden
 
-    // Initializing render texture because we will be rendering to this texture
-    renderTexturePtr = Ogre::TextureManager::getSingleton().createManual(
-        "RenderTexture", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D, 640, 480, 0,
-        Ogre::PF_R8G8B8, Ogre::TU_RENDERTARGET);
+        // Initializing render texture because we will be rendering to this texture
+        renderTexturePtr = Ogre::TextureManager::getSingleton().createManual(
+            "RenderTexture", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D, 640, 480, 0,
+            Ogre::PF_R8G8B8, Ogre::TU_RENDERTARGET);
 
-    renderTexture = renderTexturePtr->getBuffer()->getRenderTarget();
+        renderTexture = renderTexturePtr->getBuffer()->getRenderTarget();
+    }
 
     // register for input events
     addInputListener(this);
@@ -62,51 +84,55 @@ void MyTestApp::setup(void)
     cam->setAutoAspectRatio(true);
     camNode->attachObject(cam);
 
-    // and tell it to render into the main window
-    // getRenderWindow()->addViewport(cam);
-    renderTexture->addViewport(cam);
+    Ogre::Viewport *vp;
+
+    // and tell it to render into the main window or texture
+    if (hideWindow)
+        vp = renderTexture->addViewport(cam);
+    else
+        vp = getRenderWindow()->addViewport(cam);
+
+    vp->setBackgroundColour(Ogre::ColourValue(1, 1, 1));
 
     // finally something to render
     Ogre::Entity *ent = scnMgr->createEntity("Sinbad.mesh");
-    Ogre::SceneNode *node = scnMgr->getRootSceneNode()->createChildSceneNode();
+    node = scnMgr->getRootSceneNode()->createChildSceneNode();
     node->attachObject(ent);
 }
 //! [setup]
 
+Ogre::Quaternion ToQuaternion(double yaw, double pitch, double roll) // yaw (Z), pitch (Y), roll (X)
+{
+    // Abbreviations for the various angular functions
+    double cy = cos(yaw * 0.5);
+    double sy = sin(yaw * 0.5);
+    double cp = cos(pitch * 0.5);
+    double sp = sin(pitch * 0.5);
+    double cr = cos(roll * 0.5);
+    double sr = sin(roll * 0.5);
+
+    Ogre::Quaternion q;
+    q.w = cr * cp * cy + sr * sp * sy;
+    q.x = sr * cp * cy - cr * sp * sy;
+    q.y = cr * sp * cy + sr * cp * sy;
+    q.z = cr * cp * sy - sr * sp * cy;
+
+    return q;
+}
+
 bool MyTestApp::frameRenderingQueued(const Ogre::FrameEvent &evt)
 {
-    Ogre::LogManager::getSingleton().logMessage("RENDERING");
+    // Ogre::LogManager::getSingleton().logMessage("RENDERING ++");
+
+    static float ry = 0;
+    ry += 0.5 * evt.timeSinceLastFrame;
+    Ogre::Quaternion q = ToQuaternion(0, ry, 0);
+    node->setOrientation(q.w, q.x, q.y, q.z);
 
     return true;
 }
 
-const void *MyTestApp::getNextFrame()
+void MyTestApp::resize(unsigned int x, unsigned int y)
 {
-    // Rendering the frame on top
-    getRoot()->renderOneFrame();
-
-    Ogre::Image image(renderTexture->suggestPixelFormat(), renderTexture->getWidth(), renderTexture->getHeight());
-    Ogre::PixelBox pb = image.getPixelBox();
-    renderTexture->copyContentsToMemory(pb, pb);
-
-    renderTexture->writeContentsToFile("wow.png");
-
-    return image.getData();
+    getRenderWindow()->resize(x, y);
 }
-
-//! [main]
-int main()
-{
-    MyTestApp app;
-
-    app.initApp();
-    while (true)
-    {
-        if (!app.getRoot()->renderOneFrame())
-            break;
-    }
-
-    app.closeApp();
-    return 0;
-}
-//! [main]
